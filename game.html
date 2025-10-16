@@ -5,39 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>婚禮同步跑步比賽 💖</title>
 <style>
-  body { text-align:center; font-family:"Noto Sans TC",sans-serif; background:linear-gradient(to bottom right,#ffe6f0,#fff); margin:0; padding:20px; }
-  h1 { color:#d63384; font-size:2em; margin-bottom:20px; }
-  .player { width:90%; margin:10px auto; position:relative; text-align:left; }
-  .progress-container { background:#ffe6f2; border-radius:10px; overflow:hidden; height:24px; border:2px solid #f9a8d4; }
-  .progress-bar { height:100%; width:0%; background:#f472b6; transition: width 0.2s; }
-  .name-label { font-weight:bold; font-size:16px; color:#d63384; margin-bottom:4px; }
-  input { padding:6px; border-radius:6px; border:1px solid #ccc; text-align:center; }
-  button { margin:5px; padding:10px 20px; font-size:16px; border:none; border-radius:12px; background-color:#ff8fb1; color:white; cursor:pointer; transition:0.2s; }
-  button:hover { background-color:#ff6fa2; }
-  #winner { font-size:28px; color:green; font-weight:bold; margin-top:20px; }
-  #musicBtn { position: fixed; top: 10px; right: 10px; }
+body {
+  text-align:center;
+  font-family:"Noto Sans TC",sans-serif;
+  background:linear-gradient(to bottom right,#ffe6f0,#fff);
+  margin:0; padding:20px;
+}
+h1 { color:#d63384; font-size:2em; margin-bottom:20px; }
+#controls { display:flex; justify-content:center; gap:10px; margin-bottom:20px; }
+button { font-size:16px; padding:10px; border:none; cursor:pointer; transition:0.2s; }
+button:hover { opacity:0.8; }
+#joinBtn, #startBtn, #resetBtn { border-radius:12px; background:#ff8fb1; color:white; }
+#runBtn { width:70px; height:70px; border-radius:50%; background:#ff6fa2; color:white; font-size:18px; line-height:70px; }
+#runBtn:hover { background:#ff3f84; }
+.player { width:90%; margin:10px auto; position:relative; text-align:left; }
+.progress-container { background:#ffe6f2; border-radius:10px; overflow:hidden; height:24px; border:2px solid #f9a8d4; }
+.progress-bar { height:100%; width:0%; background:#f472b6; transition: width 0.2s; }
+.name-label { font-weight:bold; font-size:16px; color:#d63384; margin-bottom:4px; }
+#winner { font-size:28px; color:green; font-weight:bold; margin-top:20px; }
 </style>
 </head>
 <body>
 
 <h1>🏃 婚禮同步跑步比賽 💖</h1>
 
-<!-- 🎵 可愛背景音樂 -->
-<audio id="bgm" loop autoplay>
-  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3e1c5c3c34.mp3?filename=cute-background-music-14085.mp3" type="audio/mpeg">
-</audio>
-<button id="musicBtn">🔊 音樂開關</button>
-
-<div id="setupArea">
-  <input id="playerName" placeholder="輸入名字" style="width:80%; font-size:16px;">
-  <br>
-  <button id="joinBtn">加入比賽</button>
+<input id="playerName" placeholder="輸入名字" style="padding:6px; font-size:16px;">
+<div id="controls">
+  <button id="joinBtn">加入遊戲</button>
+  <button id="startBtn">開始遊戲</button>
+  <button id="resetBtn">重新開始</button>
+  <button id="runBtn">🏃 點我跑</button>
 </div>
 
 <div id="raceArea"></div>
 <div id="winner"></div>
-<div id="myBtnArea"></div>
-<button id="resetBtn">重新開始</button>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -59,60 +60,74 @@ const db = firebase.database();
 
 const FINISH_LINE = 200;
 let playerName = "";
+let gameStarted = false;
 let gameOver = false;
 
-const setupArea = document.getElementById("setupArea");
+// 控制按鈕
+const joinBtn = document.getElementById("joinBtn");
+const startBtn = document.getElementById("startBtn");
+const resetBtn = document.getElementById("resetBtn");
+const runBtn = document.getElementById("runBtn");
 const raceArea = document.getElementById("raceArea");
 const winnerDiv = document.getElementById("winner");
-const myBtnArea = document.getElementById("myBtnArea");
-const bgm = document.getElementById("bgm");
 
-// 音樂開關
-document.getElementById("musicBtn").onclick = () => {
-  if(bgm.paused){ bgm.play(); document.getElementById("musicBtn").innerText="🔊 音樂開"; }
-  else { bgm.pause(); document.getElementById("musicBtn").innerText="🔇 音樂關"; }
-};
+runBtn.disabled = true;
 
-// 加入比賽
-document.getElementById("joinBtn").onclick = () => {
+// 加入遊戲
+joinBtn.onclick = () => {
   playerName = document.getElementById("playerName").value.trim();
   if(!playerName) return alert("請輸入名字！");
-  db.ref("players/" + playerName).set({ steps: 0 });
-  setupArea.style.display = "none";
-
-  // 自己的按鈕固定顯示
-  myBtnArea.innerHTML = "";
-  const btn = document.createElement("button");
-  btn.innerText = "🏃 點我跑！";
-  btn.onclick = () => {
-    if(gameOver) return;
-    db.ref("players/" + playerName + "/steps").transaction(s => (s||0)+1);
-  };
-  myBtnArea.appendChild(btn);
+  db.ref("players/" + playerName).set({ steps:0 });
+  runBtn.disabled = false;
+  alert("加入成功！可以點我跑！");
 };
 
-// 監聽玩家資料
+// 開始遊戲
+startBtn.onclick = () => {
+  if(gameStarted) return;
+  db.ref("gameStarted").set(true);
+  gameStarted = true;
+};
+
+// 重新開始
+resetBtn.onclick = () => {
+  db.ref("players").remove();
+  db.ref("gameStarted").set(false);
+  raceArea.innerHTML="";
+  winnerDiv.innerText="";
+  gameOver=false;
+  gameStarted=false;
+  runBtn.disabled=true;
+};
+
+// 點我跑
+runBtn.onclick = () => {
+  if(!gameStarted || gameOver) return;
+  db.ref("players/" + playerName + "/steps").transaction(s => (s||0)+1);
+};
+
+// 監聽遊戲進度
 db.ref("players").on("value", snapshot => {
-  raceArea.innerHTML = "";
+  raceArea.innerHTML="";
   const players = snapshot.val();
   if(!players) return;
 
   for(let name in players){
     const steps = players[name].steps;
-    const percent = Math.min((steps / FINISH_LINE)*100,100);
+    const percent = Math.min((steps/FINISH_LINE)*100,100);
 
     const div = document.createElement("div");
-    div.className = "player";
+    div.className="player";
 
     const label = document.createElement("div");
-    label.className = "name-label";
-    label.innerText = name + " ("+steps+")";
+    label.className="name-label";
+    label.innerText=name+" ("+steps+")";
 
     const barContainer = document.createElement("div");
-    barContainer.className = "progress-container";
+    barContainer.className="progress-container";
 
     const bar = document.createElement("div");
-    bar.className = "progress-bar";
+    bar.className="progress-bar";
     bar.style.width = percent + "%";
 
     barContainer.appendChild(bar);
@@ -121,21 +136,11 @@ db.ref("players").on("value", snapshot => {
     raceArea.appendChild(div);
 
     if(steps >= FINISH_LINE && !gameOver){
-      gameOver = true;
-      winnerDiv.innerText = "🏆 " + name + " 獲勝啦！ 🎉";
+      gameOver=true;
+      winnerDiv.innerText="🏆 "+name+" 獲勝啦！ 🎉";
     }
   }
 });
-
-// 重置
-document.getElementById("resetBtn").onclick = () => {
-  db.ref("players").remove();
-  raceArea.innerHTML = "";
-  winnerDiv.innerText = "";
-  myBtnArea.innerHTML = "";
-  gameOver=false;
-  setupArea.style.display="block";
-};
 </script>
 </body>
 </html>
