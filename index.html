@@ -30,9 +30,7 @@
       cursor: pointer;
       transition: 0.2s;
     }
-    button:hover {
-      background-color: #ff8fab;
-    }
+    button:hover { background-color: #ff8fab; }
     input {
       padding: 8px;
       border-radius: 8px;
@@ -93,12 +91,11 @@
   <div id="raceArea"></div>
   <div id="winner"></div>
 
-  <!-- ✅ Firebase SDK -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
   <script>
-    // 🔑 你的 Firebase 設定
     var firebaseConfig = {
       apiKey: "AIzaSyAQzK5BX7q7uetIKxKyf80QPkMgCee7O-g",
       authDomain: "index-63c1d.firebaseapp.com",
@@ -127,7 +124,7 @@
       playerName = document.getElementById("playerName").value.trim();
       if (!playerName) return alert("請輸入名字！");
       db.ref("players/" + playerName).set({ steps: 0 });
-      clickBtn.disabled = true;
+      alert("加入成功！等待主持人開始比賽...");
     };
 
     // 🏃 點擊跑步
@@ -147,7 +144,7 @@
         } else {
           clearInterval(timer);
           countdownDiv.innerText = "開始！";
-          db.ref("gameStarted").set(true);
+          db.ref("gameStarted").set(true); // 啟動遊戲
           setTimeout(() => (countdownDiv.innerText = ""), 1000);
         }
       }, 1000);
@@ -166,7 +163,7 @@
       clickBtn.disabled = true;
     };
 
-    // 📡 即時監聽遊戲開始
+    // 📡 監聽遊戲開始
     db.ref("gameStarted").on("value", (snap) => {
       gameStarted = snap.val();
       clickBtn.disabled = !gameStarted;
