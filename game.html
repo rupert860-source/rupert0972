@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>💞 婚禮跑步比賽 💨</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: "Microsoft JhengHei", sans-serif;
+      background: linear-gradient(to bottom right, #ffe6f2, #fff5fa);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      color: #d63384;
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+    .controls {
+      margin: 10px 0;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      background-color: #ffb6c1;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background-color: #ff8fab;
+    }
+    input {
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    .player {
+      width: 90%;
+      margin: 15px auto;
+      text-align: left;
+      position: relative;
+    }
+    .progress-container {
+      background-color: #ffe6f2;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 24px;
+      border: 2px solid #f9a8d4;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #f472b6;
+      transition: width 0.2s;
+    }
+    .name-label {
+      font-weight: bold;
+      font-size: 16px;
+      color: #d63384;
+      margin-bottom: 4px;
+    }
+    #countdown {
+      font-size: 36px;
+      color: #dc2626;
+      font-weight: bold;
+      margin: 10px;
+    }
+    #winner {
+      font-size: 24px;
+      color: green;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>💞 婚禮跑步比賽 💨</h1>
+  <div class="controls">
+    <input id="playerName" placeholder="輸入名字" />
+    <button id="joinBtn">加入遊戲</button><br />
+    <button id="clickBtn" disabled>🏃 點我跑！</button>
+    <button id="startBtn">🎬 開始比賽</button>
+    <button id="resetBtn">🔄 重新開始</button>
+    <button id="musicBtn" disabled>🎵 音樂 (暫不開啟)</button>
+  </div>
+
+  <div id="countdown"></div>
+  <div id="raceArea"></div>
+  <div id="winner"></div>
+
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // ✅ 換成你的 Firebase Config
+    var firebaseConfig = {
+      apiKey: "AIzaSyAQzK5BX7q7uetIKxKyf86Xxxxxxxx",
+      authDomain: "index-63c1d.firebaseapp.com",
+      databaseURL: "https://index-63c1d-default-rtdb.firebaseio.com",
+      projectId: "index-63c1d",
+      storageBucket: "index-63c1d.appspot.com",
+      messagingSenderId: "259240910482",
+      appId: "1:259240910482:web:4e2d9a57fca6367848904b",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const FINISH_LINE = 200;
+    let playerName = "";
+    let gameStarted = false;
+    let gameOver = false;
+
+    const raceArea = document.getElementById("raceArea");
+    const clickBtn = document.getElementById("clickBtn");
+    const winnerDiv = document.getElementById("winner");
+    const countdownDiv = document.getElementById("countdown");
+
+    // 🧍 加入遊戲
+    document.getElementById("joinBtn").onclick = () => {
+      playerName = document.getElementById("playerName").value.trim();
+      if (!playerName) return alert("請輸入名字！");
+      db.ref("players/" + playerName).set({ steps: 0 });
+      clickBtn.disabled = true;
+    };
+
+    // 🏃 點擊跑步
+    clickBtn.onclick = () => {
+      if (!gameStarted || gameOver) return;
+      db.ref("players/" + playerName + "/steps").transaction((s) => (s || 0) + 1);
+    };
+
+    // 🎬 開始比賽（主持人）
+    document.getElementById("startBtn").onclick = () => {
+      let count = 3;
+      countdownDiv.innerText = count;
+      let timer = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countdownDiv.innerText = count;
+        } else {
+          clearInterval(timer);
+          countdownDiv.innerText = "開始！";
+          db.ref("gameStarted").set(true);
+          setTimeout(() => (countdownDiv.innerText = ""), 1000);
+        }
+      }, 1000);
+    };
+
+    // 🔄 重置
+    document.getElementById("resetBtn").onclick = () => {
+      db.ref("players").remove();
+      db.ref("gameStarted").set(false);
+      db.ref("gameOver").set(false);
+      raceArea.innerHTML = "";
+      winnerDiv.innerText = "";
+      countdownDiv.innerText = "";
+      gameStarted = false;
+      gameOver = false;
+      clickBtn.disabled = true;
+    };
+
+    // 📡 即時監聽遊戲開始
+    db.ref("gameStarted").on("value", (snap) => {
+      gameStarted = snap.val();
+      clickBtn.disabled = !gameStarted;
+    });
+
+    // 📡 監聽玩家資料
+    db.ref("players").on("value", (snapshot) => {
+      raceArea.innerHTML = "";
+      const players = snapshot.val();
+      if (!players) return;
+      for (let name in players) {
+        let steps = players[name].steps;
+        let percent = Math.min((steps / FINISH_LINE) * 100, 100);
+
+        let div = document.createElement("div");
+        div.className = "player";
+
+        let label = document.createElement("div");
+        label.className = "name-label";
+        label.innerText = `${name} (${steps})`;
+
+        let barContainer = document.createElement("div");
+        barContainer.className = "progress-container";
+
+        let bar = document.createElement("div");
+        bar.className = "progress-bar";
+        bar.style.width = percent + "%";
+
+        barContainer.appendChild(bar);
+        div.appendChild(label);
+        div.appendChild(barContainer);
+        raceArea.appendChild(div);
+
+        if (steps >= FINISH_LINE && !gameOver) {
+          gameOver = true;
+          db.ref("gameOver").set(true);
+          winnerDiv.innerText = `🎉 ${name} 獲勝啦！`;
+        }
+      }
+    });
+
+    // 📡 監聽結束
+    db.ref("gameOver").on("value", (snap) => {
+      gameOver = snap.val();
+      if (gameOver) clickBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>
