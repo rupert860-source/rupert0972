@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🏃 婚禮跑步同步比賽 💖</title>
+<title>🏃 婚禮同步跑步比賽 💖</title>
 <style>
   body { text-align:center; font-family:"Noto Sans TC", sans-serif; background:linear-gradient(to bottom right,#ffe6f0,#fff); margin:0; padding:20px; }
   h1 { color:#d63384; font-size:2em; }
@@ -14,27 +14,22 @@
   input { padding:6px; border-radius:6px; border:1px solid #ccc; text-align:center; }
   button { margin:5px; padding:10px 20px; font-size:16px; border:none; border-radius:12px; background-color:#ff8fb1; color:white; cursor:pointer; transition:0.2s; }
   button:hover{background-color:#ff6fa2;}
-  #countdown{font-size:36px;color:red;margin:10px;}
   #winner{font-size:28px;color:green;font-weight:bold;margin-top:20px;}
 </style>
 </head>
 <body>
 
-<h1>🏃 婚禮跑步同步比賽 💖</h1>
+<h1>🏃 婚禮同步跑步比賽 💖</h1>
 
 <div id="setupArea">
   <input id="playerName" placeholder="輸入名字" style="width:80%; font-size:16px;">
   <br>
-  <button id="joinBtn">加入遊戲</button>
+  <button id="joinBtn">加入比賽</button>
 </div>
 
-<div id="gameArea" style="display:none;">
-  <div id="raceArea"></div>
-  <div id="countdown"></div>
-  <div id="winner"></div>
-  <button id="startBtn">開始遊戲</button>
-  <button id="resetBtn">重新開始</button>
-</div>
+<div id="raceArea"></div>
+<div id="winner"></div>
+<button id="resetBtn">重新開始</button>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -57,67 +52,27 @@
 
   const FINISH_LINE = 200;
   let playerName = "";
-  let gameStarted = false;
   let gameOver = false;
 
   const raceArea = document.getElementById("raceArea");
-  const countdownDiv = document.getElementById("countdown");
   const winnerDiv = document.getElementById("winner");
   const joinBtn = document.getElementById("joinBtn");
-  const startBtn = document.getElementById("startBtn");
 
-  // 加入遊戲
+  // 玩家加入比賽
   joinBtn.onclick = () => {
     playerName = document.getElementById("playerName").value.trim();
     if(!playerName) return alert("請輸入名字！");
     db.ref("players/" + playerName).set({ steps: 0 });
-    document.getElementById("setupArea").style.display="none";
-    document.getElementById("gameArea").style.display="block";
-    alert("加入成功！等待主持人開始比賽...");
+    document.getElementById("setupArea").style.display = "none";
   };
 
   // 點擊跑步
   function move() {
-    if(!gameStarted || gameOver) return;
+    if(gameOver) return;
     db.ref("players/" + playerName + "/steps").transaction(s => (s||0)+1);
   }
 
-  // 開始比賽（主持人）
-  startBtn.onclick = () => {
-    if(gameStarted) return;
-    let count = 3;
-    countdownDiv.innerText = count;
-    let timer = setInterval(()=>{
-      count--;
-      if(count>0) countdownDiv.innerText=count;
-      else{
-        clearInterval(timer);
-        countdownDiv.innerText="開始！";
-        db.ref("gameStarted").set(true);
-        setTimeout(()=>countdownDiv.innerText="",1000);
-      }
-    },1000);
-  };
-
-  // 重置
-  document.getElementById("resetBtn").onclick = () => {
-    db.ref("players").remove();
-    db.ref("gameStarted").set(false);
-    db.ref("gameOver").set(false);
-    raceArea.innerHTML="";
-    winnerDiv.innerText="";
-    document.getElementById("setupArea").style.display="block";
-    document.getElementById("gameArea").style.display="none";
-    gameStarted=false;
-    gameOver=false;
-  };
-
-  // 監聽遊戲開始
-  db.ref("gameStarted").on("value",snap=>{
-    gameStarted = snap.val();
-  });
-
-  // 監聽玩家資料並生成跑步按鈕
+  // 監聽玩家資料
   db.ref("players").on("value",snap=>{
     raceArea.innerHTML="";
     const players = snap.val();
@@ -126,46 +81,50 @@
       let steps = players[name].steps;
       let percent = Math.min((steps/FINISH_LINE)*100,100);
 
-      let div=document.createElement("div");
-      div.className="player";
+      let div = document.createElement("div");
+      div.className = "player";
 
-      let label=document.createElement("div");
-      label.className="name-label";
-      label.innerText=name + " ("+steps+")";
+      let label = document.createElement("div");
+      label.className = "name-label";
+      label.innerText = name + " ("+steps+")";
 
-      let barContainer=document.createElement("div");
-      barContainer.className="progress-container";
+      let barContainer = document.createElement("div");
+      barContainer.className = "progress-container";
 
-      let bar=document.createElement("div");
-      bar.className="progress-bar";
-      bar.style.width=percent+"%";
+      let bar = document.createElement("div");
+      bar.className = "progress-bar";
+      bar.style.width = percent+"%";
 
       barContainer.appendChild(bar);
       div.appendChild(label);
       div.appendChild(barContainer);
       raceArea.appendChild(div);
 
-      // 產生點我跑按鈕（只給自己的名字）
+      // 產生自己的跑步按鈕
       if(name===playerName){
-        let btn=document.createElement("button");
-        btn.innerText="🏃 點我跑！";
-        btn.onclick=move;
+        let btn = document.createElement("button");
+        btn.innerText = "🏃 點我跑！";
+        btn.onclick = move;
         raceArea.appendChild(btn);
       }
 
       // 判斷勝利
       if(steps>=FINISH_LINE && !gameOver){
         gameOver=true;
-        db.ref("gameOver").set(true);
         winnerDiv.innerText="🏆 "+name+" 獲勝啦！ 🎉";
       }
     }
   });
 
-  // 監聽遊戲結束
-  db.ref("gameOver").on("value",snap=>{
-    gameOver = snap.val();
-  });
+  // 重置遊戲
+  document.getElementById("resetBtn").onclick = () => {
+    db.ref("players").remove();
+    db.ref("gameOver").set(false);
+    raceArea.innerHTML="";
+    winnerDiv.innerText="";
+    gameOver=false;
+    document.getElementById("setupArea").style.display="block";
+  };
 </script>
 </body>
 </html>
