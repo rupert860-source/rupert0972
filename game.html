@@ -8,7 +8,7 @@
 body {
   text-align:center;
   font-family:"Noto Sans TC",sans-serif;
-  background:linear-gradient(to bottom right,#ffe6f0,#fff);
+  background:#fff0f5;
   margin:0; padding:20px;
 }
 h1 { color:#d63384; font-size:2em; margin-bottom:20px; }
@@ -16,13 +16,14 @@ h1 { color:#d63384; font-size:2em; margin-bottom:20px; }
 button { font-size:16px; padding:10px; border:none; cursor:pointer; transition:0.2s; }
 button:hover { opacity:0.8; }
 #joinBtn, #startBtn, #resetBtn { border-radius:12px; background:#ff8fb1; color:white; }
-#runBtn { width:70px; height:70px; border-radius:50%; background:#ff6fa2; color:white; font-size:18px; line-height:70px; }
+#runBtn { width:70px; height:70px; border-radius:50%; background:#ff6fa2; color:white; font-size:24px; line-height:70px; }
 #runBtn:hover { background:#ff3f84; }
-#playersList { margin-bottom:20px; font-weight:bold; color:#d63384; }
-.player { width:90%; margin:10px auto; position:relative; text-align:left; }
-.progress-container { background:#ffe6f2; border-radius:10px; overflow:hidden; height:24px; border:2px solid #f9a8d4; }
+#playersList { margin-bottom:20px; font-weight:bold; color:#d63384; text-align:left; max-width:500px; margin:0 auto 20px; }
+.player { margin:10px 0; position:relative; }
+.progress-container { background:#ffe6f2; border-radius:12px; overflow:hidden; height:30px; border:2px solid #f9a8d4; position:relative; }
 .progress-bar { height:100%; width:0%; background:#f472b6; transition: width 0.2s; }
-.name-label { font-weight:bold; font-size:16px; color:#d63384; margin-bottom:4px; }
+.runner-icon { position:absolute; top:0; left:0; font-size:28px; transition:left 0.2s; }
+.name-label { font-weight:bold; font-size:16px; color:#d63384; position:absolute; top:5px; left:40px; }
 #winner { font-size:28px; color:green; font-weight:bold; margin-top:20px; }
 #countdown { font-size:36px; color:red; font-weight:bold; margin-top:10px; }
 </style>
@@ -36,7 +37,7 @@ button:hover { opacity:0.8; }
   <button id="joinBtn">加入遊戲</button>
   <button id="startBtn">開始遊戲</button>
   <button id="resetBtn">重新開始</button>
-  <button id="runBtn">🏃 點我跑</button>
+  <button id="runBtn">🏃</button>
 </div>
 
 <div id="playersList"></div>
@@ -86,7 +87,7 @@ joinBtn.onclick = () => {
   runBtn.disabled = true;
 };
 
-// 開始遊戲（倒數5秒）
+// 開始遊戲倒數5秒
 startBtn.onclick = () => {
   if(gameStarted) return;
   let count = 5;
@@ -125,7 +126,7 @@ runBtn.onclick = () => {
   db.ref("players/" + playerName + "/steps").transaction(s=>(s||0)+1);
 };
 
-// 顯示玩家列表
+// Firebase 監聽玩家進度
 db.ref("players").on("value", snapshot=>{
   const players = snapshot.val();
   if(!players){
@@ -134,33 +135,39 @@ db.ref("players").on("value", snapshot=>{
     return;
   }
 
-  playersListDiv.innerText = "玩家："+Object.keys(players).join(", ");
-
-  raceArea.innerHTML="";
+  // 顯示玩家列表
+  playersListDiv.innerHTML = "";
   for(let name in players){
-    const steps = players[name].steps;
-    const percent = Math.min((steps/FINISH_LINE)*100,100);
-
     const div = document.createElement("div");
     div.className="player";
+    div.id="player-"+name;
 
     const label = document.createElement("div");
     label.className="name-label";
-    label.innerText=name+" ("+steps+")";
+    label.innerText=name;
 
-    const barContainer = document.createElement("div");
-    barContainer.className="progress-container";
+    const progressContainer = document.createElement("div");
+    progressContainer.className="progress-container";
 
-    const bar = document.createElement("div");
-    bar.className="progress-bar";
-    bar.style.width = percent+"%";
+    const progressBar = document.createElement("div");
+    progressBar.className="progress-bar";
+    progressBar.id="bar-"+name;
+    progressBar.style.width = Math.min(players[name].steps/FINISH_LINE*100,100)+"%";
 
-    barContainer.appendChild(bar);
+    const runnerIcon = document.createElement("div");
+    runnerIcon.className="runner-icon";
+    runnerIcon.id="runner-"+name;
+    runnerIcon.innerText="🏃";
+    runnerIcon.style.left = Math.min(players[name].steps/FINISH_LINE*100,100)+"%";
+
+    progressContainer.appendChild(progressBar);
+    progressContainer.appendChild(runnerIcon);
     div.appendChild(label);
-    div.appendChild(barContainer);
+    div.appendChild(progressContainer);
     raceArea.appendChild(div);
 
-    if(steps>=FINISH_LINE && !gameOver){
+    // 判斷勝利
+    if(players[name].steps>=FINISH_LINE && !gameOver){
       gameOver=true;
       winnerDiv.innerText="🏆 "+name+" 獲勝啦！ 🎉";
     }
