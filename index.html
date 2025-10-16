@@ -6,15 +6,15 @@
 <title>🏃 婚禮同步跑步比賽 💖</title>
 <style>
   body { text-align:center; font-family:"Noto Sans TC", sans-serif; background:linear-gradient(to bottom right,#ffe6f0,#fff); margin:0; padding:20px; }
-  h1 { color:#d63384; font-size:2em; }
-  .player { width:90%; margin:15px auto; text-align:left; position:relative; }
+  h1 { color:#d63384; font-size:2em; margin-bottom:20px; }
+  .player { width:90%; margin:10px auto; text-align:left; position:relative; }
   .progress-container { background:#ffe6f2; border-radius:10px; overflow:hidden; height:24px; border:2px solid #f9a8d4; }
   .progress-bar { height:100%; width:0%; background:#f472b6; transition: width 0.2s; }
   .name-label { font-weight:bold; font-size:16px; color:#d63384; margin-bottom:4px; }
   input { padding:6px; border-radius:6px; border:1px solid #ccc; text-align:center; }
   button { margin:5px; padding:10px 20px; font-size:16px; border:none; border-radius:12px; background-color:#ff8fb1; color:white; cursor:pointer; transition:0.2s; }
-  button:hover{background-color:#ff6fa2;}
-  #winner{font-size:28px;color:green;font-weight:bold;margin-top:20px;}
+  button:hover { background-color:#ff6fa2; }
+  #winner { font-size:28px; color:green; font-weight:bold; margin-top:20px; }
 </style>
 </head>
 <body>
@@ -29,15 +29,14 @@
 
 <div id="raceArea"></div>
 <div id="winner"></div>
+<div id="myBtnArea"></div>
 <button id="resetBtn">重新開始</button>
 
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-  // 🔑 Firebase 配置
-  var firebaseConfig = {
+var firebaseConfig = {
     apiKey: "AIzaSyAQzK5BX7q7uetIKxKyf80QPkMgCee7O-g",
     authDomain: "index-63c1d.firebaseapp.com",
     databaseURL: "https://index-63c1d-default-rtdb.firebaseio.com",
@@ -46,85 +45,82 @@
     messagingSenderId: "259240910482",
     appId: "1:259240910482:web:4e2d9a57fca6367848904b",
     measurementId: "G-YF4Y2S57DV"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-  const FINISH_LINE = 200;
-  let playerName = "";
-  let gameOver = false;
+const FINISH_LINE = 200;
+let playerName = "";
+let gameOver = false;
 
-  const raceArea = document.getElementById("raceArea");
-  const winnerDiv = document.getElementById("winner");
-  const joinBtn = document.getElementById("joinBtn");
+const setupArea = document.getElementById("setupArea");
+const raceArea = document.getElementById("raceArea");
+const winnerDiv = document.getElementById("winner");
+const myBtnArea = document.getElementById("myBtnArea");
 
-  // 玩家加入比賽
-  joinBtn.onclick = () => {
+document.getElementById("joinBtn").onclick = () => {
     playerName = document.getElementById("playerName").value.trim();
     if(!playerName) return alert("請輸入名字！");
     db.ref("players/" + playerName).set({ steps: 0 });
-    document.getElementById("setupArea").style.display = "none";
-  };
+    setupArea.style.display = "none";
 
-  // 點擊跑步
-  function move() {
-    if(gameOver) return;
-    db.ref("players/" + playerName + "/steps").transaction(s => (s||0)+1);
-  }
+    // 生成自己的跑步按鈕，固定顯示
+    myBtnArea.innerHTML = "";
+    const btn = document.createElement("button");
+    btn.innerText = "🏃 點我跑！";
+    btn.onclick = () => {
+        if(gameOver) return;
+        db.ref("players/" + playerName + "/steps").transaction(s => (s||0)+1);
+    };
+    myBtnArea.appendChild(btn);
+};
 
-  // 監聽玩家資料
-  db.ref("players").on("value",snap=>{
-    raceArea.innerHTML="";
-    const players = snap.val();
+// 監聽玩家資料
+db.ref("players").on("value", snapshot => {
+    raceArea.innerHTML = "";
+    const players = snapshot.val();
     if(!players) return;
+
     for(let name in players){
-      let steps = players[name].steps;
-      let percent = Math.min((steps/FINISH_LINE)*100,100);
+        const steps = players[name].steps;
+        const percent = Math.min((steps / FINISH_LINE) * 100, 100);
 
-      let div = document.createElement("div");
-      div.className = "player";
+        const div = document.createElement("div");
+        div.className = "player";
 
-      let label = document.createElement("div");
-      label.className = "name-label";
-      label.innerText = name + " ("+steps+")";
+        const label = document.createElement("div");
+        label.className = "name-label";
+        label.innerText = name + " ("+steps+")";
 
-      let barContainer = document.createElement("div");
-      barContainer.className = "progress-container";
+        const barContainer = document.createElement("div");
+        barContainer.className = "progress-container";
 
-      let bar = document.createElement("div");
-      bar.className = "progress-bar";
-      bar.style.width = percent+"%";
+        const bar = document.createElement("div");
+        bar.className = "progress-bar";
+        bar.style.width = percent + "%";
 
-      barContainer.appendChild(bar);
-      div.appendChild(label);
-      div.appendChild(barContainer);
-      raceArea.appendChild(div);
+        barContainer.appendChild(bar);
+        div.appendChild(label);
+        div.appendChild(barContainer);
+        raceArea.appendChild(div);
 
-      // 產生自己的跑步按鈕
-      if(name===playerName){
-        let btn = document.createElement("button");
-        btn.innerText = "🏃 點我跑！";
-        btn.onclick = move;
-        raceArea.appendChild(btn);
-      }
-
-      // 判斷勝利
-      if(steps>=FINISH_LINE && !gameOver){
-        gameOver=true;
-        winnerDiv.innerText="🏆 "+name+" 獲勝啦！ 🎉";
-      }
+        if(steps >= FINISH_LINE && !gameOver){
+            gameOver = true;
+            winnerDiv.innerText = "🏆 " + name + " 獲勝啦！ 🎉";
+        }
     }
-  });
+});
 
-  // 重置遊戲
-  document.getElementById("resetBtn").onclick = () => {
+// 重置遊戲
+document.getElementById("resetBtn").onclick = () => {
     db.ref("players").remove();
-    db.ref("gameOver").set(false);
-    raceArea.innerHTML="";
-    winnerDiv.innerText="";
+    raceArea.innerHTML = "";
+    winnerDiv.innerText = "";
+    myBtnArea.innerHTML = "";
     gameOver=false;
-    document.getElementById("setupArea").style.display="block";
-  };
+    setupArea.style.display="block";
+};
 </script>
+
 </body>
 </html>
